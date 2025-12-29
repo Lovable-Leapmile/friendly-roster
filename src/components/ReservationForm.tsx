@@ -114,7 +114,7 @@ const ReservationForm: React.FC<ReservationFormProps> = ({ open, onOpenChange })
                 ) : (
                   locations.map((location: Location) => (
                     <SelectItem key={location.id} value={String(location.id)}>
-                      {location.name}
+                      {location.location_name}
                     </SelectItem>
                   ))
                 )}
