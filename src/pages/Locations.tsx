@@ -55,11 +55,11 @@ const Locations: React.FC = () => {
                         <Building2 className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <CardTitle className="text-lg">{location.name}</CardTitle>
-                        {location.city && (
+                        <CardTitle className="text-lg">{location.location_name}</CardTitle>
+                        {location.location_state && (
                           <CardDescription className="flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" />
-                            {location.city}{location.state ? `, ${location.state}` : ''}
+                            {location.location_pincode ? `${location.location_pincode}, ` : ''}{location.location_state}
                           </CardDescription>
                         )}
                       </div>
@@ -70,9 +70,9 @@ const Locations: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {location.address && (
+                  {location.location_address && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
-                      {location.address}
+                      {location.location_address}
                     </p>
                   )}
                 </CardContent>

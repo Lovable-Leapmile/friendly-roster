@@ -22,12 +22,12 @@ export interface User {
 
 export interface Location {
   id: number;
-  name: string;
-  location_name?: string;
-  address?: string;
+  location_name: string;
   location_address?: string;
-  city?: string;
-  state?: string;
+  location_pincode?: string;
+  location_state?: string;
+  status?: string;
+  payment_mode?: string;
   created_at?: string;
   updated_at?: string;
 }
