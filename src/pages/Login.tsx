@@ -2,76 +2,115 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { api } from '@/lib/api';
+import { api, User } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Phone, ArrowLeft, Shield } from 'lucide-react';
 import qikpodLogo from '@/assets/qikpod-logo.avif';
 
-const loginSchema = z.object({
-  email: z.string().trim().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(1, { message: 'Password is required' }),
+const phoneSchema = z.object({
+  phone: z.string().trim().min(10, { message: 'Please enter a valid 10-digit phone number' }).max(10, { message: 'Phone number must be 10 digits' }).regex(/^\d+$/, { message: 'Phone number must contain only digits' }),
 });
 
+type LoginStep = 'phone' | 'otp';
+
+interface UserWithOtp extends User {
+  user_phone?: string;
+  user_otp?: string;
+  user_name?: string;
+}
+
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [step, setStep] = useState<LoginStep>('phone');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [foundUser, setFoundUser] = useState<UserWithOtp | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [error, setError] = useState<string>('');
   const navigate = useNavigate();
   const { login } = useAuth();
   const { toast } = useToast();
 
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: usersResponse, isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
     queryFn: api.getUsers,
     staleTime: 5 * 60 * 1000,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const users = (usersResponse as any)?.records || usersResponse || [];
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
+    setError('');
     
-    const result = loginSchema.safeParse({ email, password });
+    const result = phoneSchema.safeParse({ phone });
     if (!result.success) {
-      const fieldErrors: { email?: string; password?: string } = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0] === 'email') fieldErrors.email = err.message;
-        if (err.path[0] === 'password') fieldErrors.password = err.message;
-      });
-      setErrors(fieldErrors);
+      setError(result.error.errors[0].message);
       return;
     }
 
     setIsLoading(true);
-
-    // Simulate a brief loading state
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     const user = users.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
+      (u: UserWithOtp) => u.user_phone === phone
     );
 
     if (user) {
-      login(user);
+      setFoundUser(user);
+      setStep('otp');
       toast({
-        title: 'Welcome back!',
-        description: `Logged in as ${user.name || user.email}`,
+        title: 'OTP Sent!',
+        description: `An OTP has been sent to ${phone.slice(0, 4)}****${phone.slice(-2)}`,
       });
-      navigate('/');
     } else {
-      toast({
-        title: 'Login Failed',
-        description: 'Invalid email or password. Please try again.',
-        variant: 'destructive',
-      });
+      setError('Phone number not registered. Please contact support.');
     }
 
     setIsLoading(false);
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (otp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    setIsLoading(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    if (foundUser && otp === foundUser.user_otp) {
+      login({
+        id: foundUser.id,
+        name: foundUser.user_name || foundUser.name || 'User',
+        email: (foundUser as any).user_email || foundUser.email || '',
+        phone: foundUser.user_phone,
+      });
+      toast({
+        title: 'Welcome!',
+        description: `Logged in as ${foundUser.user_name || foundUser.name}`,
+      });
+      navigate('/');
+    } else {
+      setError('Invalid OTP. Please try again.');
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleBack = () => {
+    setStep('phone');
+    setOtp('');
+    setError('');
+    setFoundUser(null);
   };
 
   return (
@@ -88,69 +127,138 @@ const Login: React.FC = () => {
 
         {/* Login Card */}
         <Card className="shadow-elevated border-border/50">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">Welcome Back</CardTitle>
-            <CardDescription>
-              Sign in to manage your pod reservations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={errors.email ? 'border-destructive' : ''}
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email}</p>
-                )}
-              </div>
+          {step === 'phone' ? (
+            <>
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-xl">Welcome</CardTitle>
+                <CardDescription>
+                  Enter your phone number to continue
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePhoneSubmit} className="space-y-6">
+                  {/* Phone Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      Phone Number
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                        +91
+                      </span>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="Enter your 10-digit number"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        className={`pl-12 ${error ? 'border-destructive' : ''}`}
+                        maxLength={10}
+                      />
+                    </div>
+                    {error && (
+                      <p className="text-xs text-destructive">{error}</p>
+                    )}
+                  </div>
 
-              {/* Password Field */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-muted-foreground" />
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={errors.password ? 'border-destructive' : ''}
-                />
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password}</p>
-                )}
-              </div>
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    className="w-full gradient-primary text-primary-foreground"
+                    disabled={isLoading || usersLoading || phone.length !== 10}
+                  >
+                    {isLoading || usersLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {usersLoading ? 'Loading...' : 'Sending OTP...'}
+                      </>
+                    ) : (
+                      'Send OTP'
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader className="text-center pb-4">
+                <button
+                  onClick={handleBack}
+                  className="absolute left-4 top-4 p-2 rounded-lg hover:bg-secondary transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+                </button>
+                <div className="flex justify-center mb-2">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-primary" />
+                  </div>
+                </div>
+                <CardTitle className="text-xl">Verify OTP</CardTitle>
+                <CardDescription>
+                  Enter the 6-digit code sent to<br />
+                  <span className="font-medium text-foreground">+91 {phone.slice(0, 4)}****{phone.slice(-2)}</span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleOtpSubmit} className="space-y-6">
+                  {/* OTP Field */}
+                  <div className="flex flex-col items-center space-y-4">
+                    <InputOTP
+                      maxLength={6}
+                      value={otp}
+                      onChange={(value) => setOtp(value)}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                    {error && (
+                      <p className="text-xs text-destructive">{error}</p>
+                    )}
+                  </div>
 
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                className="w-full gradient-primary text-primary-foreground mt-6"
-                disabled={isLoading || usersLoading}
-              >
-                {isLoading || usersLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {usersLoading ? 'Loading...' : 'Signing in...'}
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </form>
-          </CardContent>
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    className="w-full gradient-primary text-primary-foreground"
+                    disabled={isLoading || otp.length !== 6}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify & Login'
+                    )}
+                  </Button>
+
+                  {/* Resend OTP */}
+                  <p className="text-center text-sm text-muted-foreground">
+                    Didn't receive the code?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast({
+                          title: 'OTP Resent!',
+                          description: 'A new OTP has been sent to your phone.',
+                        });
+                      }}
+                      className="text-primary font-medium hover:underline"
+                    >
+                      Resend
+                    </button>
+                  </p>
+                </form>
+              </CardContent>
+            </>
+          )}
         </Card>
 
         {/* Footer */}
