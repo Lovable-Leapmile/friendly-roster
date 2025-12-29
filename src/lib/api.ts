@@ -12,6 +12,10 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  user_name?: string;
+  user_phone?: string;
+  user_email?: string;
+  user_otp?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -19,7 +23,9 @@ export interface User {
 export interface Location {
   id: number;
   name: string;
+  location_name?: string;
   address?: string;
+  location_address?: string;
   city?: string;
   state?: string;
   created_at?: string;
@@ -58,6 +64,12 @@ export interface OtpData {
   pickup_validated?: boolean;
 }
 
+interface ApiResponse<T> {
+  status: string;
+  records: T[];
+  count?: number;
+}
+
 export const api = {
   async getUsers(): Promise<User[]> {
     const response = await fetch(
@@ -65,7 +77,8 @@ export const api = {
       { headers }
     );
     if (!response.ok) throw new Error('Failed to fetch users');
-    return response.json();
+    const data: ApiResponse<User> = await response.json();
+    return data.records || [];
   },
 
   async getLocations(): Promise<Location[]> {
@@ -74,7 +87,8 @@ export const api = {
       { headers }
     );
     if (!response.ok) throw new Error('Failed to fetch locations');
-    return response.json();
+    const data: ApiResponse<Location> = await response.json();
+    return data.records || [];
   },
 
   async getPods(): Promise<Pod[]> {
@@ -83,7 +97,8 @@ export const api = {
       { headers }
     );
     if (!response.ok) throw new Error('Failed to fetch pods');
-    return response.json();
+    const data: ApiResponse<Pod> = await response.json();
+    return data.records || [];
   },
 
   async getReservations(): Promise<Reservation[]> {
@@ -92,7 +107,8 @@ export const api = {
       { headers }
     );
     if (!response.ok) throw new Error('Failed to fetch reservations');
-    return response.json();
+    const data: ApiResponse<Reservation> = await response.json();
+    return data.records || [];
   },
 
   async createReservation(data: Record<string, unknown>): Promise<Reservation> {
@@ -111,6 +127,7 @@ export const api = {
       { headers }
     );
     if (!response.ok) throw new Error('Failed to fetch OTP list');
-    return response.json();
+    const data: ApiResponse<OtpData> = await response.json();
+    return data.records || [];
   },
 };

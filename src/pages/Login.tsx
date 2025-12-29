@@ -36,13 +36,11 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const { toast } = useToast();
 
-  const { data: usersResponse, isLoading: usersLoading } = useQuery({
+  const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
     queryFn: api.getUsers,
     staleTime: 5 * 60 * 1000,
   });
-
-  const users = (usersResponse as any)?.records || usersResponse || [];
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
