@@ -1,14 +1,14 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api, Location } from '@/lib/api';
-import Layout from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Building2, Loader2 } from 'lucide-react';
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api, Location } from "@/lib/api";
+import Layout from "@/components/Layout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Building2, Loader2 } from "lucide-react";
 
 const Locations: React.FC = () => {
   const { data: locations = [], isLoading } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ["locations"],
     queryFn: api.getLocations,
   });
 
@@ -18,9 +18,7 @@ const Locations: React.FC = () => {
         {/* Header */}
         <div className="mb-8 animate-fade-in">
           <h1 className="text-3xl font-bold text-foreground mb-2">Locations</h1>
-          <p className="text-muted-foreground">
-            Find available pod locations near you
-          </p>
+          <p className="text-muted-foreground">Find available pod locations near you</p>
         </div>
 
         {/* Locations Grid */}
@@ -33,9 +31,7 @@ const Locations: React.FC = () => {
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <MapPin className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">No Locations Available</h3>
-              <p className="text-sm text-muted-foreground">
-                Locations will appear here once configured.
-              </p>
+              <p className="text-sm text-muted-foreground">Locations will appear here once configured.</p>
             </CardContent>
           </Card>
         ) : (
@@ -59,7 +55,8 @@ const Locations: React.FC = () => {
                         {location.location_state && (
                           <CardDescription className="flex items-center gap-1 mt-1">
                             <MapPin className="h-3 w-3" />
-                            {location.location_pincode ? `${location.location_pincode}, ` : ''}{location.location_state}
+                            {location.location_pincode ? `${location.location_pincode}, ` : ""}
+                            {location.location_state}
                           </CardDescription>
                         )}
                       </div>
@@ -71,9 +68,7 @@ const Locations: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   {location.location_address && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {location.location_address}
-                    </p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{location.location_address}</p>
                   )}
                 </CardContent>
               </Card>
